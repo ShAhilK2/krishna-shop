@@ -15,6 +15,7 @@ const syncUser = inngest.createFunction(
   { event: "clerk/user.created" },
   async ({ event, step }) => {
     try {
+      console.log("Inngest event payload:", JSON.stringify(event, null, 2));
       await connectDB();
       
       const { id, email_addresses, first_name, last_name, image_url } = event.data;
@@ -23,16 +24,13 @@ const syncUser = inngest.createFunction(
       const newUser = {
         clerkId: id,
         email: email_addresses[0].email_address,
-        name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
+        name: `${first_name || ""} ${last_name || ""}` || "User",
         imageUrl: image_url,
         addresses: [],
         wishlist: []
       };
       
-      const createdUser = await User.create(newUser);
-      console.log("User created:", createdUser);
-      
-      return { success: true, userId: createdUser._id };
+    await User.create(newUser);
     } catch (error) {
       console.error("Error creating user:", error);
       throw error; // Re-throw to let Inngest handle retries
@@ -49,11 +47,11 @@ const deleteUserFromDb = inngest.createFunction(
       await connectDB();
       
       const { id } = event.data;
-      const result = await User.deleteOne({ clerkId: id });
+    await User.deleteOne({ clerkId: id });
+
+    
       
-      console.log("User deleted:", { clerkId: id, deletedCount: result.deletedCount });
       
-      return { success: true, deletedCount: result.deletedCount };
     } catch (error) {
       console.error("Error deleting user:", error);
       throw error;
