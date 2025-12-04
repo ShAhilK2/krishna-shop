@@ -6,6 +6,7 @@ import { ENV } from "./env.js";
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
   id: "krishna-shop",
+  
 });
 
 // Sync user function - UPDATED EVENT NAME
@@ -17,10 +18,17 @@ const syncUser = inngest.createFunction(
       try {
         console.log("🔥 Inngest event received:", JSON.stringify(event, null, 2));
         
+        // Verify database connection
+        console.log("🔌 Connecting to database...");
         await connectDB();
+        console.log("✅ Database connected successfully");
         
         // The data structure from Clerk webhook
         const { id, email_addresses, first_name, last_name, image_url } = event.data;
+        
+        if (!id) {
+          throw new Error("User ID is missing in the webhook payload");
+        }
         
         console.log("📧 Processing user:", {
           id,
@@ -31,8 +39,12 @@ const syncUser = inngest.createFunction(
         // Check if user already exists
         const existingUser = await User.findOne({ clerkId: id });
         if (existingUser) {
-          console.log("✅ User already exists:", existingUser.email);
+          console.log("ℹ️ User already exists:", existingUser.email);
           return { message: "User already exists", user: existingUser };
+        }
+        
+        if (!email_addresses?.[0]?.email_address) {
+          throw new Error("Email address is missing in the webhook payload");
         }
         
         const newUser = {
@@ -44,15 +56,18 @@ const syncUser = inngest.createFunction(
           wishlist: []
         };
         
-        console.log("💾 Creating user:", newUser);
+        console.log("💾 Attempting to create user:", JSON.stringify(newUser, null, 2));
         
         const createdUser = await User.create(newUser);
-        console.log("✅ User created successfully:", createdUser.email);
-        
-        return { message: "User created", user: createdUser };
+        console.log("✅ User created successfully:", createdUser.email, "(ID:", createdUser._id, ")");
+        return { message: "User created successfully", user: createdUser };
       } catch (error) {
-        console.error("❌ Error creating user:", error);
-        console.error("Error stack:", error.stack);
+        console.error("❌ Error processing webhook:", {
+          message: error.message,
+          stack: error.stack,
+          event: JSON.stringify(event, null, 2)
+        });
+        // Re-throw the error to mark the function as failed in Ingest
         throw error;
       }
     });
