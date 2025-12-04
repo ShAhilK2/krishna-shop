@@ -28,6 +28,8 @@ const syncUser = inngest.createFunction(
         }
 
         await User.create(newUser);
+
+        console.log("User created", newUser);
         
     }
 );
