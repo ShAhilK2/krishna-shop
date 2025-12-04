@@ -6,56 +6,81 @@ import { ENV } from "./env.js";
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
   id: "krishna-shop",
-  eventKey: ENV.INNGEST_EVENT_KEY, // Add this if you have an event key
 });
 
-// Sync user function
+// Sync user function - UPDATED EVENT NAME
 const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "clerk/user.created" },
+  { event: "webhook-integration/user.created" }, // Changed from "clerk/user.created"
   async ({ event, step }) => {
-    try {
-      console.log("Inngest event payload:", JSON.stringify(event, null, 2));
-      await connectDB();
-      
-      const { id, email_addresses, first_name, last_name, image_url } = event.data;
-      
-      // Fixed name concatenation
-      const newUser = {
-        clerkId: id,
-        email: email_addresses[0].email_address,
-        name: `${first_name || ""} ${last_name || ""}` || "User",
-        imageUrl: image_url,
-        addresses: [],
-        wishlist: []
-      };
-      
-    await User.create(newUser);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      throw error; // Re-throw to let Inngest handle retries
-    }
+    return await step.run("create-user-in-db", async () => {
+      try {
+        console.log("🔥 Inngest event received:", JSON.stringify(event, null, 2));
+        
+        await connectDB();
+        
+        // The data structure from Clerk webhook
+        const { id, email_addresses, first_name, last_name, image_url } = event.data;
+        
+        console.log("📧 Processing user:", {
+          id,
+          email: email_addresses?.[0]?.email_address,
+          name: `${first_name || ""} ${last_name || ""}`.trim()
+        });
+        
+        // Check if user already exists
+        const existingUser = await User.findOne({ clerkId: id });
+        if (existingUser) {
+          console.log("✅ User already exists:", existingUser.email);
+          return { message: "User already exists", user: existingUser };
+        }
+        
+        const newUser = {
+          clerkId: id,
+          email: email_addresses[0].email_address,
+          name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
+          imageUrl: image_url || "",
+          addresses: [],
+          wishlist: []
+        };
+        
+        console.log("💾 Creating user:", newUser);
+        
+        const createdUser = await User.create(newUser);
+        console.log("✅ User created successfully:", createdUser.email);
+        
+        return { message: "User created", user: createdUser };
+      } catch (error) {
+        console.error("❌ Error creating user:", error);
+        console.error("Error stack:", error.stack);
+        throw error;
+      }
+    });
   }
 );
 
-// Delete user function
+// Delete user function - UPDATED EVENT NAME
 const deleteUserFromDb = inngest.createFunction(
   { id: "delete-user-from-db" },
-  { event: "clerk/user.deleted" },
+  { event: "webhook-integration/user.deleted" }, // Changed from "clerk/user.deleted"
   async ({ event, step }) => {
-    try {
-      await connectDB();
-      
-      const { id } = event.data;
-    await User.deleteOne({ clerkId: id });
-
-    
-      
-      
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      throw error;
-    }
+    return await step.run("delete-user-from-db", async () => {
+      try {
+        console.log("🗑️ Deleting user:", event.data.id);
+        
+        await connectDB();
+        
+        const { id } = event.data;
+        const result = await User.deleteOne({ clerkId: id });
+        
+        console.log("✅ User deletion result:", result);
+        
+        return { message: "User deleted", result };
+      } catch (error) {
+        console.error("❌ Error deleting user:", error);
+        throw error;
+      }
+    });
   }
 );
 
