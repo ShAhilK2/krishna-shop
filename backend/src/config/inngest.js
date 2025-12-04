@@ -5,7 +5,6 @@ import { ENV } from "./env.js";
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
     id: "krishna-shop",
-    signingKey: ENV.INNGEST_SIGNING_KEY
 });
 
 // Create an empty array where we'll export future Inngest functions
@@ -24,7 +23,7 @@ const syncUser = inngest.createFunction(
         const newUser = {
             clerkId : id,
             email : email_addresses[0].email_address,
-            name : `${first_name|| ""}  || ${last_name|| ""} || "User"`,
+            name : `${first_name|| ""}  || ${last_name|| ""}` || "User",
             imageUrl : image_url,
             addresses : [],
             wishlist : []
