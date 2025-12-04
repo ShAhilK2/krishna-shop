@@ -6,13 +6,12 @@ import { ENV } from "./env.js";
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
   id: "krishna-shop",
-  
 });
 
 // Sync user function - UPDATED EVENT NAME
 const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "clerk/user.created" }, // Changed from "clerk/user.created"
+  { event: "user.created" }, // Changed from "clerk/user.created"
   async ({ event, step }) => {
     return await step.run("create-user-in-db", async () => {
       try {
@@ -77,7 +76,7 @@ const syncUser = inngest.createFunction(
 // Delete user function - UPDATED EVENT NAME
 const deleteUserFromDb = inngest.createFunction(
   { id: "delete-user-from-db" },
-  { event: "clerk/user.deleted" }, // Changed from "clerk/user.deleted"
+  { event: "user.deleted" }, // Changed from "clerk/user.deleted"
   async ({ event, step }) => {
     return await step.run("delete-user-from-db", async () => {
       try {
