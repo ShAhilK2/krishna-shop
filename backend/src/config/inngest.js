@@ -15,8 +15,7 @@ const syncUser = inngest.createFunction(
         event: "clerk/user.created",
     },
     async ({ event }) => {
-
-        await connectDB();
+        try{ await connectDB();
 
         const {id, email_addresses,first_name,last_name,image_url}=event.data;
 
@@ -31,7 +30,11 @@ const syncUser = inngest.createFunction(
 
         await User.create(newUser);
 
-        console.log("User created", newUser);
+        console.log("User created", User.findOne({clerkId : id}));
+
+        }catch(error){
+            console.log("Error creating user", error);
+        }
         
     }
 );
